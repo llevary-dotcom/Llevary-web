@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Llevari Cliente</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #F8F9FA; color: #333; display: flex; justify-content: center; min-height: 100vh; }
+    .app-container { width: 100%; max-width: 480px; background-color: #FFF; min-height: 100vh; display: flex; flex-direction: column; position: relative; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    
+    /* Headers & Navigation */
+    .header { padding: 15px; background: #FFF; border-bottom: 1px solid #EEE; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+    .brand { font-size: 22px; font-weight: bold; color: #E91E63; }
+    .bottom-nav { display: flex; background: #FFF; border-top: 1px solid #EEE; position: fixed; bottom: 0; width: 100%; max-width: 480px; z-index: 10; }
+    .nav-btn { flex: 1; padding: 10px 0; border: none; background: none; text-align: center; font-size: 12px; color: #757575; cursor: pointer; }
+    .nav-btn.active { color: #E91E63; font-weight: bold; }
+    
+    /* Content & Screens */
+    .content { flex: 1; padding: 15px; padding-bottom: 70px; }
+    .screen { display: none; }
+    .screen.active { display: block; }
+    
+    /* Forms & UI Elements */
+    .card { background: #FFF; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 15px; border: 1px solid #F0F0F0; }
+    .input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #DDD; border-radius: 8px; background: #F9F9F9; font-size: 14px; }
+    .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; background: #E91E63; color: white; font-weight: bold; cursor: pointer; font-size: 15px; margin-top: 5px; }
+    .btn-small { padding: 6px 12px; font-size: 12px; background: #2E7D32; border-radius: 6px; width: auto; }
+    .link-btn { color: #1565C0; text-align: center; margin-top: 15px; cursor: pointer; font-size: 14px; }
+    
+    /* Lists */
+    .rest-item { display: flex; align-items: center; padding: 12px; background: #FFF; border-radius: 10px; margin-bottom: 10px; border: 1px solid #EEE; cursor: pointer; }
+    .rest-icon { font-size: 28px; width: 50px; height: 50px; background: #FFF3E0; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 12px; }
+    .prod-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #FFF; border-radius: 8px; margin-bottom: 8px; border: 1px solid #EEE; }
+    
+    /* Modal */
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: flex-end; }
+    .modal.active { display: flex; }
+    .modal-content { background: #FFF; width: 100%; max-width: 480px; border-radius: 20px 20px 0 0; padding: 20px; max-height: 80vh; overflow-y: auto; }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    <!-- Header -->
+    <div class="header">
+      <div class="brand">🛵 LLEVARI</div>
+      <div id="userInfo" style="font-size: 12px; color: #666;">Choluteca</div>
+    </div>
+
+    <div class="content">
+      <!-- 1. LOGIN -->
+      <div id="screenLogin" class="screen active">
+        <div class="card" style="margin-top: 40px;">
+          <h2 style="margin-bottom: 15px;">¡Hola de nuevo!</h2>
+          <input type="tel" id="logTel" class="input" placeholder="Teléfono (ej: 99887766)">
+          <input type="password" id="logPin" class="input" placeholder="PIN (4 dígitos)" maxlength="4">
+          <button class="btn" onclick="login()">ENTRAR AHORA</button>
+          <div class="link-btn" onclick="showScreen('screenRegistro')">¿No tienes cuenta? Regístrate aquí</div>
+        </div>
+      </div>
+
+      <!-- 2. REGISTRO -->
+      <div id="screenRegistro" class="screen">
+        <div class="card">
+          <h2 style="margin-bottom: 15px;">Crea tu cuenta</h2>
+          <input type="text" id="regNombre" class="input" placeholder="Nombre completo">
+          <input type="email" id="regCorreo" class="input" placeholder="Correo electrónico">
+          <input type="tel" id="regTel" class="input" placeholder="Teléfono (8 dígitos)">
+          <input type="password" id="regPin" class="input" placeholder="PIN (4 dígitos)" maxlength="4">
+          <input type="text" id="regDir" class="input" placeholder="Dirección (ej: Casa pared verde)">
+          <button class="btn" onclick="registro()">FINALIZAR REGISTRO ✅</button>
+          <div class="link-btn" onclick="showScreen('screenLogin')">¿Ya tienes cuenta? Inicia sesión</div>
+        </div>
+      </div>
+
+      <!-- 3. INICIO / RESTAURANTES -->
+      <div id="screenInicio" class="screen">
+        <h3 style="margin-bottom: 12px;">Restaurantes Disponibles</h3>
+        <div id="listaRestaurantes">Cargando restaurantes...</div>
+      </div>
+
+      <!-- 4. CARRITO -->
+      <div id="screenCarrito" class="screen">
+        <h3 style="margin-bottom: 12px;">Mi Carrito</h3>
+        <div id="listaCarrito">Tu carrito está vacío.</div>
+        <div id="resumenCarrito" style="display:none; margin-top: 15px;">
+          <div class="card">
+            <div>Subtotal: L. <span id="subtotalCart">0</span></div>
+            <div>Envío: L. 26.00</div>
+            <hr style="margin: 10px 0;">
+            <strong>Total: L. <span id="totalCart">0</span></strong>
+          </div>
+          <button class="btn" onclick="enviarPedido()">CONFIRMAR ORDEN ✅</button>
+        </div>
+      </div>
+
+      <!-- 5. SEGUIMIENTO DE PEDIDO -->
+      <div id="screenSeguimiento" class="screen">
+        <div class="card" style="text-align: center; padding: 30px;">
+          <div style="font-size: 50px;">🛵</div>
+          <h3 style="margin-top: 10px;">¡Tu pedido está en proceso!</h3>
+          <p id="trackRestName" style="color: #666; margin-top: 5px;">Restaurante</p>
+          <p id="trackStatus" style="color: #2E7D32; font-weight: bold; margin-top: 15px;">Estado: NUEVO</p>
+          <button class="btn" style="margin-top: 20px; background: #555;" onclick="showMainTab('screenInicio')">Volver al Inicio</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Menú Restaurante -->
+    <div id="modalMenu" class="modal">
+      <div class="modal-content">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+          <h3 id="modalRestNombre">Menú</h3>
+          <button style="border:none; background:none; font-size: 20px; cursor:pointer;" onclick="cerrarMenu()">✕</button>
+        </div>
+        <div id="listaProductos">Cargando menú...</div>
+      </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div id="bottomNav" class="bottom-nav" style="display: none;">
+      <button class="nav-btn active" onclick="showMainTab('screenInicio', this)">🏠<br>Inicio</button>
+      <button class="nav-btn" onclick="showMainTab('screenCarrito', this)">🛒<br>Carrito (<span id="cartCount">0</span>)</button>
+      <button class="nav-btn" onclick="logout()">🚪<br>Salir</button>
+    </div>
+  </div>
+
+  <!-- FIREBASE SDK v9/v10 (Compatibilidad CDN Web) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc }
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    // Credenciales de tu Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyCzSAKIp00O_8EEG9_enZh4mtXmgu7egAo",
+      authDomain: "llevari-app.firebaseapp.com",
+      projectId: "llevari-app",
+      storageBucket: "llevari-app.appspot.com",
+      messagingSenderId: "1234567890",
+      appId: "1:1234567890:web:abcdef123456"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    window.db = db; window.doc = doc; window.getDoc = getDoc;
+    window.setDoc = setDoc; window.collection = collection;
+    window.getDocs = getDocs; window.addDoc = addDoc;
+  </script>
+
+  <script>
+    const TARIFA_ENVIO = 26.0;
+    let currentUser = null;
+    let carrito = [];
+    let restSeleccionado = null;
+
+    // Navegación
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+    function showMainTab(id, btn) {
+      showScreen(id);
+      if (btn) {
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      }
+    }
+
+    // Login y Registro
+    async function login() {
+      const tel = document.getElementById('logTel').value.trim();
+      const pin = document.getElementById('logPin').value.trim();
+      if (!tel || !pin) return alert('Completa los campos');
+
+      const telF = '+504' + tel;
+      try {
+        const snap = await window.getDoc(window.doc(window.db, 'clientes', telF));
+        if (snap.exists() && snap.data().pin === pin) {
+          currentUser = { telefono: telF, ...snap.data() };
+          iniciarSesionUI();
+        } else {
+          alert('Teléfono o PIN incorrectos');
+        }
+      } catch (e) {
+        alert('Error conectando a Firebase');
+      }
+    }
+
+    async function registro() {
+      const nombre = document.getElementById('regNombre').value.trim();
+      const correo = document.getElementById('regCorreo').value.trim();
+      const tel = document.getElementById('regTel').value.trim();
+      const pin = document.getElementById('regPin').value.trim();
+      const dir = document.getElementById('regDir').value.trim();
+
+      if (!nombre || !tel || !pin) return alert('Llena los campos requeridos');
+      const telF = '+504' + tel;
+
+      const data = { nombre, correo, telefono: telF, pin, ciudad: 'Choluteca', direccion_desc: dir, latitud: 13.3024, longitud: -87.1921 };
+      await window.setDoc(window.doc(window.db, 'clientes', telF), data);
+      currentUser = data;
+      iniciarSesionUI();
+    }
+
+    function iniciarSesionUI() {
+      document.getElementById('userInfo').innerText = `${currentUser.nombre} (${currentUser.ciudad})`;
+      document.getElementById('bottomNav').style.display = 'flex';
+      showScreen('screenInicio');
+      cargarRestaurantes();
+    }
+
+    function logout() {
+      currentUser = null;
+      carrito = [];
+      document.getElementById('bottomNav').style.display = 'none';
+      showScreen('screenLogin');
+    }
+
+    // Cargar Datos
+    async function cargarRestaurantes() {
+      const cont = document.getElementById('listaRestaurantes');
+      cont.innerHTML = 'Cargando...';
+      const snap = await window.getDocs(window.collection(window.db, 'restaurantes'));
+      cont.innerHTML = '';
+
+      snap.forEach(docSnap => {
+        const r = { id: docSnap.id, ...docSnap.data() };
+        const div = document.createElement('div');
+        div.className = 'rest-item';
+        div.innerHTML = `<div class="rest-icon">🍔</div><div><strong>${r.nombre || 'Restaurante'}</strong><br><small style="color:#757575">⏱ 20-35m • 🛵 L. ${TARIFA_ENVIO}</small></div>`;
+        div.onclick = () => abrirMenu(r);
+        cont.appendChild(div);
+      });
+    }
+
+    async function abrirMenu(rest) {
+      restSeleccionado = rest;
+      document.getElementById('modalRestNombre').innerText = rest.nombre;
+      document.getElementById('modalMenu').classList.add('active');
+      const cont = document.getElementById('listaProductos');
+      cont.innerHTML = 'Cargando platos...';
+
+      const snap = await window.getDocs(window.collection(window.db, 'restaurantes', rest.id, 'productos'));
+      cont.innerHTML = '';
+
+      snap.forEach(docSnap => {
+        const p = { id: docSnap.id, ...docSnap.data() };
+        const div = document.createElement('div');
+        div.className = 'prod-item';
+        div.innerHTML = `<div><strong>${p.nombre}</strong><br><span style="color:#2E7D32">L. ${p.precio || 0}</span></div>`;
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-small';
+        btn.innerText = '+ Agregar';
+        btn.onclick = () => agregarAlCarrito(p);
+        div.appendChild(btn);
+        cont.appendChild(div);
+      });
+    }
+
+    function cerrarMenu() {
+      document.getElementById('modalMenu').classList.remove('active');
+    }
+
+    // Carrito
+    function agregarAlCarrito(prod) {
+      carrito.push({ restId: restSeleccionado.id, restNombre: restSeleccionado.nombre, platoNombre: prod.nombre, precio: prod.precio || 0 });
+      document.getElementById('cartCount').innerText = carrito.length;
+      cerrarMenu();
+      alert(`¡${prod.nombre} agregado!`);
+      dibujarCarrito();
+    }
+
+    function dibujarCarrito() {
+      const cont = document.getElementById('listaCarrito');
+      const resumen = document.getElementById('resumenCarrito');
+
+      if (carrito.length === 0) {
+        cont.innerHTML = 'Tu carrito está vacío.';
+        resumen.style.display = 'none';
+        return;
+      }
+
+      cont.innerHTML = '';
+      let sub = 0;
+      carrito.forEach((item) => {
+        sub += item.precio;
+        const div = document.createElement('div');
+        div.className = 'prod-item';
+        div.innerHTML = `<div><strong>${item.platoNombre}</strong></div><div>L. ${item.precio}</div>`;
+        cont.appendChild(div);
+      });
+
+      document.getElementById('subtotalCart').innerText = sub.toFixed(2);
+      document.getElementById('totalCart').innerText = (sub + TARIFA_ENVIO).toFixed(2);
+      resumen.style.display = 'block';
+    }
+
+    async function enviarPedido() {
+      if (carrito.length === 0) return;
+      const primerItem = carrito[0];
+      const sub = carrito.reduce((s, i) => s + i.precio, 0);
+
+      const pedidoData = {
+        estado: 'NUEVO',
+        subtotal: sub,
+        costo_envio: TARIFA_ENVIO,
+        total: sub + TARIFA_ENVIO,
+        nombre_plato: carrito.map(c => c.platoNombre).join(', '),
+        fecha: new Date().toLocaleString(),
+        cliente_nombre: currentUser.nombre,
+        cliente_telefono: currentUser.telefono,
+        cliente_lat: currentUser.latitud || 13.3024,
+        cliente_lon: currentUser.longitud || -87.1921,
+        restaurante_nombre: primerItem.restNombre,
+        repartidor_nombre: 'Buscando...',
+        cliente_direccion_desc: currentUser.direccion_desc || ''
+      };
+
+      const docRef = await window.addDoc(window.collection(window.db, 'restaurantes', primerItem.restId, 'pedidos'), pedidoData);
+      await window.setDoc(window.doc(window.db, 'clientes', currentUser.telefono, 'mis_pedidos', docRef.id), { ...pedidoData, rId: primerItem.restId, pId: docRef.id });
+
+      document.getElementById('trackRestName').innerText = primerItem.restNombre;
+      carrito = [];
+      document.getElementById('cartCount').innerText = '0';
+      dibujarCarrito();
+      showScreen('screenSeguimiento');
+    }
+  </script>
+</body>
+</html>
