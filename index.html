@@ -25,7 +25,7 @@
     .card { background: #FFF; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 15px; border: 1px solid #F0F0F0; }
     .input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #DDD; border-radius: 8px; background: #F9F9F9; font-size: 14px; }
     .btn { width: 100%; padding: 12px; border: none; border-radius: 8px; background: #E91E63; color: white; font-weight: bold; cursor: pointer; font-size: 15px; margin-top: 5px; }
-    .btn-small { padding: 6px 12px; font-size: 12px; background: #2E7D32; border-radius: 6px; width: auto; }
+    .btn-small { padding: 6px 12px; font-size: 12px; background: #2E7D32; color: white; border-radius: 6px; border: none; cursor: pointer; }
     .link-btn { color: #1565C0; text-align: center; margin-top: 15px; cursor: pointer; font-size: 14px; }
     
     /* Lists */
@@ -53,7 +53,7 @@
       <div id="screenLogin" class="screen active">
         <div class="card" style="margin-top: 40px;">
           <h2 style="margin-bottom: 15px;">¡Hola de nuevo!</h2>
-          <input type="tel" id="logTel" class="input" placeholder="Teléfono (ej: 99887766)">
+          <input type="tel" id="logTel" class="input" placeholder="Teléfono (ej: 92081135)">
           <input type="password" id="logPin" class="input" placeholder="PIN (4 dígitos)" maxlength="4">
           <button class="btn" onclick="login()">ENTRAR AHORA</button>
           <div class="link-btn" onclick="showScreen('screenRegistro')">¿No tienes cuenta? Regístrate aquí</div>
@@ -126,13 +126,13 @@
     </div>
   </div>
 
-  <!-- FIREBASE SDK v9/v10 (Compatibilidad CDN Web) -->
+  <!-- FIREBASE SDK CDN -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc }
       from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    // Credenciales de tu Firebase
+    // Credenciales con el ID de tu proyecto real
     const firebaseConfig = {
       apiKey: "AIzaSyCzSAKIp00O_8EEG9_enZh4mtXmgu7egAo",
       authDomain: "llevari-app.firebaseapp.com",
@@ -144,9 +144,14 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
-    window.db = db; window.doc = doc; window.getDoc = getDoc;
-    window.setDoc = setDoc; window.collection = collection;
-    window.getDocs = getDocs; window.addDoc = addDoc;
+    
+    window.db = db;
+    window.doc = doc;
+    window.getDoc = getDoc;
+    window.setDoc = setDoc;
+    window.collection = collection;
+    window.getDocs = getDocs;
+    window.addDoc = addDoc;
   </script>
 
   <script>
@@ -155,7 +160,6 @@
     let carrito = [];
     let restSeleccionado = null;
 
-    // Navegación
     function showScreen(id) {
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       document.getElementById(id).classList.add('active');
@@ -169,23 +173,26 @@
       }
     }
 
-    // Login y Registro
     async function login() {
       const tel = document.getElementById('logTel').value.trim();
       const pin = document.getElementById('logPin').value.trim();
-      if (!tel || !pin) return alert('Completa los campos');
+      if (!tel || !pin) return alert('Completa todos los campos');
 
-      const telF = '+504' + tel;
+      // Formatea el teléfono con prefijo
+      const telF = tel.startsWith('+') ? tel : '+504' + tel;
+
       try {
         const snap = await window.getDoc(window.doc(window.db, 'clientes', telF));
+        
         if (snap.exists() && snap.data().pin === pin) {
           currentUser = { telefono: telF, ...snap.data() };
           iniciarSesionUI();
         } else {
-          alert('Teléfono o PIN incorrectos');
+          alert('Teléfono o PIN incorrectos. Revisa que el documento exista en la colección "clientes".');
         }
       } catch (e) {
-        alert('Error conectando a Firebase');
+        console.error(e);
+        alert('Error al consultar Firebase: ' + e.message);
       }
     }
 
@@ -197,7 +204,7 @@
       const dir = document.getElementById('regDir').value.trim();
 
       if (!nombre || !tel || !pin) return alert('Llena los campos requeridos');
-      const telF = '+504' + tel;
+      const telF = tel.startsWith('+') ? tel : '+504' + tel;
 
       const data = { nombre, correo, telefono: telF, pin, ciudad: 'Choluteca', direccion_desc: dir, latitud: 13.3024, longitud: -87.1921 };
       await window.setDoc(window.doc(window.db, 'clientes', telF), data);
@@ -206,7 +213,7 @@
     }
 
     function iniciarSesionUI() {
-      document.getElementById('userInfo').innerText = `${currentUser.nombre} (${currentUser.ciudad})`;
+      document.getElementById('userInfo').innerText = `${currentUser.nombre || 'Cliente'} (${currentUser.ciudad || 'Choluteca'})`;
       document.getElementById('bottomNav').style.display = 'flex';
       showScreen('screenInicio');
       cargarRestaurantes();
@@ -219,21 +226,29 @@
       showScreen('screenLogin');
     }
 
-    // Cargar Datos
     async function cargarRestaurantes() {
       const cont = document.getElementById('listaRestaurantes');
       cont.innerHTML = 'Cargando...';
-      const snap = await window.getDocs(window.collection(window.db, 'restaurantes'));
-      cont.innerHTML = '';
+      try {
+        const snap = await window.getDocs(window.collection(window.db, 'restaurantes'));
+        cont.innerHTML = '';
 
-      snap.forEach(docSnap => {
-        const r = { id: docSnap.id, ...docSnap.data() };
-        const div = document.createElement('div');
-        div.className = 'rest-item';
-        div.innerHTML = `<div class="rest-icon">🍔</div><div><strong>${r.nombre || 'Restaurante'}</strong><br><small style="color:#757575">⏱ 20-35m • 🛵 L. ${TARIFA_ENVIO}</small></div>`;
-        div.onclick = () => abrirMenu(r);
-        cont.appendChild(div);
-      });
+        if (snap.empty) {
+          cont.innerHTML = 'No hay restaurantes disponibles.';
+          return;
+        }
+
+        snap.forEach(docSnap => {
+          const r = { id: docSnap.id, ...docSnap.data() };
+          const div = document.createElement('div');
+          div.className = 'rest-item';
+          div.innerHTML = `<div class="rest-icon">🍔</div><div><strong>${r.nombre || 'Restaurante'}</strong><br><small style="color:#757575">⏱ 20-35m • 🛵 L. ${TARIFA_ENVIO}</small></div>`;
+          div.onclick = () => abrirMenu(r);
+          cont.appendChild(div);
+        });
+      } catch (e) {
+        cont.innerHTML = 'Error al cargar los restaurantes.';
+      }
     }
 
     async function abrirMenu(rest) {
@@ -243,28 +258,36 @@
       const cont = document.getElementById('listaProductos');
       cont.innerHTML = 'Cargando platos...';
 
-      const snap = await window.getDocs(window.collection(window.db, 'restaurantes', rest.id, 'productos'));
-      cont.innerHTML = '';
+      try {
+        const snap = await window.getDocs(window.collection(window.db, 'restaurantes', rest.id, 'productos'));
+        cont.innerHTML = '';
 
-      snap.forEach(docSnap => {
-        const p = { id: docSnap.id, ...docSnap.data() };
-        const div = document.createElement('div');
-        div.className = 'prod-item';
-        div.innerHTML = `<div><strong>${p.nombre}</strong><br><span style="color:#2E7D32">L. ${p.precio || 0}</span></div>`;
-        const btn = document.createElement('button');
-        btn.className = 'btn btn-small';
-        btn.innerText = '+ Agregar';
-        btn.onclick = () => agregarAlCarrito(p);
-        div.appendChild(btn);
-        cont.appendChild(div);
-      });
+        if (snap.empty) {
+          cont.innerHTML = 'Este restaurante no tiene productos en el menú aún.';
+          return;
+        }
+
+        snap.forEach(docSnap => {
+          const p = { id: docSnap.id, ...docSnap.data() };
+          const div = document.createElement('div');
+          div.className = 'prod-item';
+          div.innerHTML = `<div><strong>${p.nombre}</strong><br><span style="color:#2E7D32">L. ${p.precio || 0}</span></div>`;
+          const btn = document.createElement('button');
+          btn.className = 'btn-small';
+          btn.innerText = '+ Agregar';
+          btn.onclick = () => agregarAlCarrito(p);
+          div.appendChild(btn);
+          cont.appendChild(div);
+        });
+      } catch (e) {
+        cont.innerHTML = 'Error al cargar el menú.';
+      }
     }
 
     function cerrarMenu() {
       document.getElementById('modalMenu').classList.remove('active');
     }
 
-    // Carrito
     function agregarAlCarrito(prod) {
       carrito.push({ restId: restSeleccionado.id, restNombre: restSeleccionado.nombre, platoNombre: prod.nombre, precio: prod.precio || 0 });
       document.getElementById('cartCount').innerText = carrito.length;
